@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Разбор обращений</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f6b5c'/%3E%3Cpath d='M9 11h14M9 16h14M9 21h8' stroke='white' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6f5f1; --surface: #ffffff; --sunken: #efede7;
+    --ink: #1c1b18; --muted: #5f5c55; --line: #dedbd2;
+    --accent: #0f6b5c; --accent-ink: #ffffff; --accent-soft: #e2f1ed;
+    --danger: #a3261c; --warn-bg: #fbf0d9; --warn-ink: #6b4a00;
+    --chip-l: 33%; --chip-bg-l: 94%; --chip-bg-s: 60%;
+    --radius: 10px;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141412; --surface: #1e1d1a; --sunken: #191816;
+      --ink: #edebe5; --muted: #a8a59c; --line: #35332e;
+      --accent: #4fc3a8; --accent-ink: #0b1f1a; --accent-soft: #17302a;
+      --danger: #ff8a7d; --warn-bg: #33290f; --warn-ink: #f0cf82;
+      --chip-l: 78%; --chip-bg-l: 17%; --chip-bg-s: 35%;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+    padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--surface);
+  }
+  h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  .mode {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted);
+    padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
+  }
+  .mode::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .mode.on::before { background: var(--accent); }
+  nav { margin-left: auto; display: flex; gap: 4px; }
+  nav button {
+    min-height: 44px; padding: 0 16px; border: 0; border-radius: 8px; background: none;
+    cursor: pointer; color: var(--muted); font-weight: 500; transition: background .15s, color .15s;
+  }
+  nav button:hover { background: var(--sunken); }
+  nav button[aria-selected="true"] { background: var(--accent-soft); color: var(--ink); }
+
+  main { max-width: 1240px; margin: 0 auto; padding: 24px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } main { padding: 16px; } header { padding: 12px 16px; } }
+  .stack { display: grid; gap: 24px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+
+  label, .label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .hint { font-weight: 400; }
+  textarea, input[type="text"], select {
+    width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; transition: border-color .15s;
+  }
+  textarea { resize: vertical; min-height: 96px; }
+  textarea:hover, input:hover, select:hover { border-color: var(--muted); }
+  select { min-height: 44px; cursor: pointer; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+  .btn {
+    min-height: 44px; padding: 0 18px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--surface); cursor: pointer; font-weight: 600; transition: background .15s, opacity .15s;
+  }
+  .btn:hover { background: var(--sunken); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover { opacity: .9; }
+  .btn.danger { color: var(--danger); }
+  .btn:disabled { opacity: .55; cursor: progress; }
+  .kbd { font-size: 12px; color: var(--muted); }
+
+  .notice { padding: 12px 14px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-ink); font-size: 14px; margin-bottom: 24px; }
+  .error { color: var(--danger); font-size: 14px; margin-top: 10px; }
+  .error:empty { display: none; }
+  .ok { color: var(--accent); font-size: 14px; }
+
+  .chip {
+    display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; white-space: nowrap;
+    color: hsl(var(--hue) var(--sat, 65%) var(--chip-l));
+    background: hsl(var(--hue) min(var(--sat, 65%), var(--chip-bg-s)) var(--chip-bg-l));
+  }
+  .chip.big { font-size: 16px; padding: 4px 14px; }
+
+  .result-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
+  .meter { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+  .meter i { display: block; width: 72px; height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+  .meter i b { display: block; height: 100%; background: var(--accent); }
+  .engine { font-size: 13px; color: var(--muted); margin-left: auto; }
+  blockquote { margin: 0 0 14px; padding: 10px 14px; border-left: 3px solid var(--line); background: var(--sunken); border-radius: 0 8px 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .reason { font-size: 14px; color: var(--muted); margin: 0 0 16px; }
+  .field { margin-bottom: 14px; }
+  .empty { color: var(--muted); font-size: 14px; margin: 0; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .filters button {
+    min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--surface); cursor: pointer; font-size: 14px; transition: background .15s, border-color .15s;
+  }
+  .filters button:hover { background: var(--sunken); }
+  .filters button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  .filters b { font-variant-numeric: tabular-nums; margin-left: 4px; }
+
+  .tickets { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 70vh; overflow-y: auto; }
+  .ticket {
+    width: 100%; text-align: left; display: grid; gap: 6px; padding: 12px 14px; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--surface); transition: background .15s, border-color .15s;
+  }
+  .ticket:hover { background: var(--sunken); }
+  .ticket[aria-current="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .ticket-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .ticket-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; color: var(--muted); }
+  .status-answered { color: var(--accent); font-weight: 600; }
+
+  .cat-form { display: grid; gap: 12px; }
+  .cat-form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; }
+  @media (max-width: 700px) { .cat-form .two { grid-template-columns: 1fr; } }
+  .cat-title { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .cat-title small { color: var(--muted); }
+  .lead { color: var(--muted); font-size: 14px; max-width: 75ch; margin: 0 0 20px; }
+
+  [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Разбор обращений</h1>
+  <span class="mode" id="mode">проверяю подключение…</span>
+  <nav role="tablist" aria-label="Разделы">
+    <button role="tab" id="tab-tickets" aria-controls="view-tickets" aria-selected="true">Обращения</button>
+    <button role="tab" id="tab-categories" aria-controls="view-categories" aria-selected="false">Категории</button>
+  </nav>
+</header>
+
+<main>
+  <div class="notice" id="rules-notice" hidden>
+    Ключ LLM не задан — работает запасной классификатор на ключевых словах, ответы шаблонные.
+    Впишите <code>LLM_API_KEY</code> в файл <code>.env</code> и перезапустите сервис.
+  </div>
+
+  <section id="view-tickets" role="tabpanel" aria-labelledby="tab-tickets" class="grid">
+    <div class="stack">
+      <form class="panel" id="compose">
+        <h2>Новое обращение</h2>
+        <label for="text">Текст обращения</label>
+        <textarea id="text" maxlength="4000" required placeholder="Например: Пропал Wi‑Fi в корпусе B."></textarea>
+        <div class="row">
+          <button class="btn primary" type="submit" id="submit">Разобрать</button>
+          <button class="btn" type="button" id="run-samples">Прогнать примеры из messages.txt</button>
+          <span class="kbd">Ctrl + Enter — разобрать</span>
+        </div>
+        <div class="error" id="compose-error" role="alert"></div>
+      </form>
+
+      <div class="panel" id="result" aria-live="polite">
+        <h2>Результат</h2>
+        <p class="empty">Разберите обращение или выберите его в истории — здесь появятся категория и черновик ответа.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>История</h2>
+      <div class="filters" id="filters" role="group" aria-label="Фильтр по категории"></div>
+      <ul class="tickets" id="tickets"></ul>
+    </div>
+  </section>
+
+  <section id="view-categories" role="tabpanel" aria-labelledby="tab-categories" hidden>
+    <p class="lead">
+      Модель выбирает категорию только из этого списка. Описание объясняет ей, когда выбирать категорию,
+      подсказка — как отвечать. Ключевые слова и шаблон ответа нужны запасному режиму без LLM.
+      Изменения действуют со следующего обращения.
+    </p>
+    <div class="stack" id="categories"></div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const HUES = [215, 8, 275, 35, 170, 320, 95];
+const state = { health: null, categories: [], tickets: [], stats: null, filter: null, selected: null };
+const $ = (id) => document.getElementById(id);
+
+// Весь пользовательский текст попадает в DOM только как текстовые узлы
+function h(tag, props = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (key === "class") el.className = value;
+    else if (key === "style") el.style.cssText = value;
+    else if (key.startsWith("on")) el.addEventListener(key.slice(2), value);
+    else if (value === true) el.setAttribute(key, "");
+    else if (value !== false && value != null) el.setAttribute(key, value);
+  }
+  for (const child of children.flat()) {
+    if (child != null && child !== false) el.append(child.nodeType ? child : String(child));
+  }
+  return el;
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: { "Content-Type": "application/json" },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  if (response.status === 204) return null;
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const detail = data && data.detail;
+    const message = Array.isArray(detail) ? detail.map((d) => d.msg).join("; ") : detail;
+    throw new Error(message || `Ошибка сервера (${response.status})`);
+  }
+  return data;
+}
+
+function chip(categoryId, name, big = false) {
+  const active = state.categories.filter((c) => !c.is_fallback);
+  const index = active.findIndex((c) => c.id === categoryId);
+  const style = index === -1 ? "--hue: 40; --sat: 6%" : `--hue: ${HUES[index % HUES.length]}`;
+  return h("span", { class: big ? "chip big" : "chip", style }, name);
+}
+
+const formatTime = (iso) =>
+  new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+// --- загрузка данных ---
+
+async function loadHealth() {
+  state.health = await api("/api/health");
+  const on = state.health.llm_configured;
+  $("mode").className = on ? "mode on" : "mode";
+  $("mode").textContent = on ? `ИИ подключён · ${state.health.model}` : "Режим правил · LLM не подключена";
+  $("rules-notice").hidden = on;
+}
+
+async function loadCategories() {
+  state.categories = await api("/api/categories");
+  renderCategories();
+}
+
+async function loadTickets() {
+  const query = state.filter ? `?category_id=${state.filter}` : "";
+  [state.tickets, state.stats] = await Promise.all([api(`/api/tickets${query}`), api("/api/stats")]);
+  renderFilters();
+  renderTickets();
+}
+
+// --- история и фильтр ---
+
+function renderFilters() {
+  const button = (id, name, count) =>
+    h("button", {
+      type: "button", "aria-pressed": String(state.filter === id),
+      onclick: () => { state.filter = id; loadTickets(); },
+    }, name, h("b", {}, count));
+  $("filters").replaceChildren(
+    button(null, "Все", state.stats.total),
+    ...state.stats.by_category.map((c) => button(c.id, c.name, c.count)),
+  );
+}
+
+function renderTickets() {
+  if (!state.tickets.length) {
+    $("tickets").replaceChildren(h("li", { class: "empty" }, "Пока пусто. Разберите первое обращение."));
+    return;
+  }
+  $("tickets").replaceChildren(...state.tickets.map((t) =>
+    h("li", {},
+      h("button", {
+        type: "button", class: "ticket", "aria-current": String(state.selected === t.id),
+        onclick: () => select(t),
+      },
+        h("span", { class: "ticket-text" }, t.text),
+        h("span", { class: "ticket-meta" },
+          chip(t.category_id, t.category),
+          h("span", {}, formatTime(t.created_at)),
+          h("span", { class: t.status === "answered" ? "status-answered" : "" },
+            t.status === "answered" ? "отвечено" : "новое"),
+          h("span", {}, t.engine === "llm" ? "ИИ" : "правила"),
+        ),
+      ),
+    ),
+  ));
+}
+
+// --- карточка результата ---
+
+function select(ticket) {
+  state.selected = ticket.id;
+  renderTickets();
+  renderResult(ticket);
+}
+
+function renderResult(t) {
+  const draft = h("textarea", { id: "draft", rows: "6" });
+  draft.value = t.final_reply ?? t.draft_reply;
+  const category = h("select", { id: "override" },
+    state.categories.map((c) => h("option", { value: c.id, selected: c.id === t.category_id }, c.name)));
+  if (!state.categories.some((c) => c.id === t.category_id)) {
+    category.prepend(h("option", { value: t.category_id, selected: true }, `${t.category} (удалена)`));
+  }
+  const feedback = h("span", { class: "ok", role: "status" });
+  const error = h("div", { class: "error", role: "alert" });
+
+  const patch = async (body, message) => {
+    error.textContent = ""; feedback.textContent = "";
+    try {
+      const updated = await api(`/api/tickets/${t.id}`, { method: "PATCH", body });
+      await loadTickets();
+      renderResult(updated);
+      $("result").querySelector(".ok").textContent = message;
+    } catch (e) { error.textContent = e.message; }
+  };
+  category.addEventListener("change", () => patch({ category_id: Number(category.value) }, "Категория изменена"));
+
+  const percent = Math.round(t.confidence * 100);
+  const seconds = (t.latency_ms / 1000).toLocaleString("ru-RU", { maximumFractionDigits: 1 });
+  $("result").replaceChildren(
+    h("h2", {}, `Результат · обращение № ${t.id}`),
+    h("div", { class: "result-head" },
+      chip(t.category_id, t.category, true),
+      h("span", { class: "meter" }, h("i", {}, h("b", { style: `width:${percent}%` })), `уверенность ${percent}%`),
+      h("span", { class: "engine" }, t.engine === "llm" ? `ИИ · ${t.model} · ${seconds} с` : "запасной режим · правила"),
+    ),
+    h("blockquote", {}, t.text),
+    t.reason && h("p", { class: "reason" }, `Почему: ${t.reason}`),
+    h("div", { class: "field" }, h("label", { for: "override" }, "Категория ",
+      h("span", { class: "hint" }, "— поправьте, если модель ошиблась")), category),
+    h("div", { class: "field" }, h("label", { for: "draft" },
+      t.status === "answered" ? "Отправленный ответ" : "Черновик ответа ",
+      t.status !== "answered" && h("span", { class: "hint" }, "— проверьте и отредактируйте перед отправкой")), draft),
+    h("div", { class: "row" },
+      h("button", { type: "button", class: "btn primary",
+        onclick: () => patch({ final_reply: draft.value, status: "answered" }, "Сохранено, обращение отмечено отвеченным") },
+        t.status === "answered" ? "Сохранить правки" : "Сохранить и отметить отвеченным"),
+      h("button", { type: "button", class: "btn",
+        onclick: async () => {
+          try { await navigator.clipboard.writeText(draft.value); feedback.textContent = "Скопировано"; }
+          catch { draft.select(); feedback.textContent = "Выделено — нажмите Ctrl+C"; }
+        } }, "Скопировать"),
+      t.status === "answered" && h("button", { type: "button", class: "btn",
+        onclick: () => patch({ status: "new" }, "Возвращено в новые") }, "Вернуть в новые"),
+      feedback,
+    ),
+    error,
+  );
+}
+
+// --- форма нового обращения ---
+
+async function busy(button, label, action) {
+  const original = button.textContent;
+  $("compose-error").textContent = "";
+  $("submit").disabled = $("run-samples").disabled = true;
+  button.textContent = label;
+  try { await action(); }
+  catch (e) { $("compose-error").textContent = e.message; }
+  finally { $("submit").disabled = $("run-samples").disabled = false; button.textContent = original; }
+}
+
+$("compose").addEventListener("submit", (event) => {
+  event.preventDefault();
+  busy($("submit"), "Разбираю…", async () => {
+    const ticket = await api("/api/classify", { method: "POST", body: { text: $("text").value } });
+    $("text").value = "";
+    state.filter = null;
+    await loadTickets();
+    select(ticket);
+  });
+});
+
+$("text").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) $("compose").requestSubmit();
+});
+
+$("run-samples").addEventListener("click", () =>
+  busy($("run-samples"), "Разбираю примеры…", async () => {
+    const texts = await api("/api/sample-messages");
+    if (!texts.length) throw new Error("Файл messages.txt не найден или пуст");
+    const tickets = await api("/api/batch", { method: "POST", body: { texts } });
+    state.filter = null;
+    await loadTickets();
+    select(tickets[0]);
+  }));
+
+// --- категории ---
+
+const CATEGORY_FIELDS = [
+  ["description", "Когда выбирать", "это читает модель", 3],
+  ["reply_hint", "Как отвечать", "тон и содержание черновика", 3],
+  ["keywords", "Ключевые слова", "через запятую, по началу слова; для режима без LLM", 2],
+  ["fallback_reply", "Шаблон ответа", "черновик в режиме без LLM", 2],
+];
+
+function categoryForm(category) {
+  const isNew = !category;
+  const uid = isNew ? "new" : category.id;
+  const name = h("input", { type: "text", id: `name-${uid}`, maxlength: "60", required: true, value: category?.name ?? "" });
+  const inputs = { name };
+  const error = h("div", { class: "error", role: "alert" });
+  const feedback = h("span", { class: "ok", role: "status" });
+
+  const fields = CATEGORY_FIELDS.map(([key, title, hint, rows]) => {
+    inputs[key] = h("textarea", { id: `${key}-${uid}`, rows: String(rows), maxlength: "2000" });
+    inputs[key].value = category?.[key] ?? "";
+    inputs[key].style.minHeight = "0";
+    return h("div", {}, h("label", { for: `${key}-${uid}` }, title, " ", h("span", { class: "hint" }, `— ${hint}`)), inputs[key]);
+  });
+
+  const form = h("form", { class: "panel cat-form" },
+    h("div", { class: "cat-title" },
+      isNew ? h("h2", { style: "margin:0" }, "Добавить категорию") : chip(category.id, category.name, true),
+      category?.is_fallback && h("small", {}, "категория по умолчанию: сюда попадает всё, что не подошло другим")),
+    h("div", {}, h("label", { for: `name-${uid}` }, "Название"), name),
+    h("div", { class: "two" }, fields[0], fields[1]),
+    h("div", { class: "two" }, fields[2], fields[3]),
+    h("div", { class: "row", style: "margin-top:0" },
+      h("button", { type: "submit", class: "btn primary" }, isNew ? "Добавить" : "Сохранить"),
+      !isNew && !category.is_fallback && h("button", { type: "button", class: "btn danger",
+        onclick: async () => {
+          if (!confirm(`Удалить категорию «${category.name}»? Прошлые обращения сохранятся.`)) return;
+          try { await api(`/api/categories/${category.id}`, { method: "DELETE" }); await reloadAll(); }
+          catch (e) { error.textContent = e.message; }
+        } }, "Удалить"),
+      feedback),
+    error,
+  );
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    error.textContent = ""; feedback.textContent = "";
+    const body = Object.fromEntries(Object.entries(inputs).map(([key, input]) => [key, input.value]));
+    try {
+      await api(isNew ? "/api/categories" : `/api/categories/${category.id}`, { method: isNew ? "POST" : "PUT", body });
+      await reloadAll();
+      if (!isNew) document.querySelector(`#name-${uid}`)?.closest("form").querySelector(".ok").append("Сохранено");
+    } catch (e) { error.textContent = e.message; }
+  });
+  return form;
+}
+
+function renderCategories() {
+  $("categories").replaceChildren(...state.categories.map(categoryForm), categoryForm(null));
+}
+
+async function reloadAll() {
+  await loadCategories();
+  await loadTickets();
+}
+
+// --- вкладки ---
+
+for (const tab of ["tickets", "categories"]) {
+  $(`tab-${tab}`).addEventListener("click", () => {
+    for (const other of ["tickets", "categories"]) {
+      $(`tab-${other}`).setAttribute("aria-selected", String(other === tab));
+      $(`view-${other}`).hidden = other !== tab;
+    }
+  });
+}
+
+(async () => {
+  try { await loadHealth(); await reloadAll(); }
+  catch (e) { $("compose-error").textContent = `Не удалось загрузить данные: ${e.message}`; }
+})();
+</script>
+</body>
+</html>

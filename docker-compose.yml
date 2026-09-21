@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    env_file: .env
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - appdata:/srv/data   # SQLite переживает пересборку контейнера
+    restart: unless-stopped
+
+volumes:
+  appdata:
