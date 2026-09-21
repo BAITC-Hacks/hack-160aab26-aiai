@@ -168,8 +168,8 @@ python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 ```
 
 76 тестов, LLM в них заменена фейком: разбор и проверка ответов модели, повторные попытки
-и откат на правила, API, CLI, база. GitHub Actions на каждый push гоняет тесты и собирает
-контейнер с проверкой healthcheck.
+и откат на правила, API, CLI, база. В `.github/workflows/ci.yml` настроен workflow
+GitHub Actions: тесты и сборка контейнера с проверкой healthcheck.
 
 ## Структура
 
